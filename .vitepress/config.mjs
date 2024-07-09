@@ -15,7 +15,8 @@ export default defineConfig({
                 text: '解题报告',
                 collapsed: true,
                 items: [
-                    { text: '7.8', link: '/solve_report/7.8/' }
+                    { text: '7.8', link: '/solve_report/7.8/' },
+                    { text: '7.9', link: '/solve_report/7.9/' }
                 ]
             }
         ],
