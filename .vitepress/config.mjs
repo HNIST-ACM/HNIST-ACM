@@ -8,7 +8,7 @@ export default defineConfig({
         // https://vitepress.dev/reference/default-theme-config
         sidebar: [
             {
-                text: 'rating 表',
+                text: 'rating表',
                 link: '/'
             },
             {
