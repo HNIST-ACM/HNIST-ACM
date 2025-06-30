@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 import requests
 
@@ -26,6 +26,7 @@ NC_RATING_COLOR = {
     'rate-score1': '#b4b4b4',
 }
 
+
 wb = load_workbook('info/id.xlsx')
 
 info: dict[int, list[dict]] = {}
@@ -41,14 +42,15 @@ for ws in wb:
 
         users.append({
             'name': row[0],
-            'cf': {'id': row[1]},
-            'nc': {'id': row[2]},
-            'atc': {'id': row[3]},
+            'cf': row[1],
+            'nc': row[2],
+            'atc': row[3],
         })
         if row[1] is not None:
             cf_ids.append(row[1])
 
 wb.close()
+
 
 # 由于 cf 获取 rating api 允许一次获取多个账号，因此先统一获取
 cf_url = f"https://codeforces.com/api/user.info?checkHistoricHandles=false&handles={';'.join(cf_ids)}"
@@ -60,32 +62,43 @@ if cf_response['status'] != 'OK':
 cf_res = {}
 for user in cf_response['result']:
     rated = 'rating' in user
-    cf_res[user['handle']] = {
+    cf_res[user['handle'].lower()] = {
+        'id': user['handle'],
         'rating': user['rating'] if rated else 'unrated',
         'color': CF_RATING_COLOR[user['rank'] if rated else 'unrated']
     }
 
+
 for users in info.values():
     for user in users:
-        # codeforces
-        cf_info: dict = user['cf']
-        if cf_info['id'] is not None:
-            cf_info.update(cf_res[cf_info['id']])
+        # Codeforces
+        cf_id, user['cf'] = user['cf'], {}
+        if cf_id is not None:
+            user['cf'] = cf_res[cf_id.lower()]
 
         # 牛客
-        nc_info: dict = user['nc']
-        if nc_info['id'] is not None:
-            nc_url = f"https://ac.nowcoder.com/acm/contest/rating-index?searchUserName={nc_info['id']}"
+        nc_id, user['nc'] = user['nc'], {}
+        if nc_id is not None:
+            nc_url = f"https://ac.nowcoder.com/acm/contest/rating-index?searchUserName={nc_id}"
             nc_res = requests.get(nc_url).text
 
             bs = BeautifulSoup(nc_res, 'html.parser')
-            tbody: Tag = bs.find('tbody')
+            tbody = bs.find('tbody')
             if tbody is not None:
-                tr: Tag = bs.find('tbody').tr
-                nc_info['uid'] = tr['data-uid']
-                span: Tag = tr.find_all('td')[4].span
-                nc_info['rating'] = int(span.get_text())
-                nc_info['color'] = NC_RATING_COLOR[span['class'][0]]
+                tr = bs.find('tbody').tr
+                span = tr.find_all('td')[4].span
+                user['nc'] = {
+                    'id': nc_id,
+                    'uid': tr['data-uid'],
+                    'rating': int(span.get_text()),
+                    'color': NC_RATING_COLOR[span['class'][0]]
+                }
+
+        # AtCoder
+        atc_id, user['atc'] = user['atc'], {}
+        if atc_id is not None:
+            user['atc']['id'] = atc_id
+
 
 DOCS = Path('docs/public')
 
